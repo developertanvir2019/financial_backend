@@ -3,7 +3,7 @@ const express = require("express");
 require("dotenv").config();
 const cors = require("cors");
 const { json } = require("body-parser");
-// import userRouter from "./authentication/user.router";
+const userRouter = require("./src/authentication/user.router");
 
 const app = express();
 
@@ -15,7 +15,7 @@ app.get("/", async (req, res) => {
   res.send(" financial server is running ");
 });
 
-// app.use("/api/user", userRouter);
+app.use("/api/user", userRouter);
 
 app.all("*", async (req, res, next) => {
   return next(new Error("Invalid route"));
