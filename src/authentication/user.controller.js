@@ -5,7 +5,7 @@ const User = require("./user.model");
 // User Registration (Signup)
 exports.signup = async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { fullName, email, phone, role, nid, password } = req.body;
 
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -13,52 +13,79 @@ exports.signup = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
-
+    const existingPhoneUser = await User.findOne({ phone });
+    if (existingPhoneUser) {
+      return res.status(400).json({ error: "Phone already exists" });
+    }
+    // Check if nid already exists
+    const existingNidUser = await User.findOne({ nid });
+    if (existingNidUser) {
+      return res.status(400).json({ error: "NID already exists" });
+    }
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+    let balance;
+    if (role === "user") {
+      balance = 40;
+    } else if (role === "agent") {
+      balance = 100000;
+    }
 
     // Create a new user
     const user = new User({
-      firstName,
-      lastName,
+      fullName,
       email,
+      phone,
+      role,
+      nid,
       password: hashedPassword,
+      balance,
+      isBlock: false,
+      isApproved: false,
     });
-
     // Save the user to the database
     await user.save();
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    res.status(500).json({ error: "Registration failed" });
+    console.error("Registration error:", error);
+    res
+      .status(500)
+      .json({ error: "Registration failed", details: error.message });
   }
 };
 
 // User Login
 exports.login = async (req, res) => {
+  console.log(req.body);
   try {
-    const { email, password } = req.body;
-    // Find the user by email
-    const user = await User.findOne({ email });
+    const { emailOrPhone, password } = req.body;
+    const user = await User.findOne({
+      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    });
 
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Invalid user or phone number" });
     }
 
     // Verify the password
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Wrong Password" });
     }
 
     // Create and send a JWT token for authentication
-    const key = process.env.secrate_key; // Typo here: should be secret_key instead of secrate_key
-    const token = jwt.sign({ userId: user._id, email: user.email }, key, {
-      expiresIn: "1h",
-    });
+    const key = process.env.secrate_key;
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, phone: user.phone },
+      key,
+      {
+        expiresIn: "1h",
+      }
+    );
 
     res.status(200).json({ token });
   } catch (error) {
-    res.status(500).json({ error: "Login failed" });
+    res.status(500).json({ error: "Login failed", detail: error });
   }
 };

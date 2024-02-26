@@ -3,11 +3,7 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
-  firstName: {
-    type: String,
-    required: true,
-  },
-  lastName: {
+  fullName: {
     type: String,
     required: true,
   },
@@ -16,9 +12,39 @@ const userSchema = new Schema({
     required: true,
     unique: true,
   },
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  role: {
+    type: String,
+    enum: ["admin", "user", "agent"],
+    required: true,
+  },
+  nid: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   password: {
     type: String,
     required: true,
+  },
+  balance: {
+    type: Number,
+  },
+  isBlock: {
+    type: Boolean,
+    default: false,
+  },
+  isApproved: {
+    type: Boolean,
+    default: false,
+  },
+  createDate: {
+    type: Date,
+    default: Date.now,
   },
 });
 
