@@ -103,3 +103,17 @@ exports.getUserById = async (req, res) => {
       .json({ error: "Failed to get user", details: error.message });
   }
 };
+
+// total balance
+exports.getTotalBalance = async (req, res) => {
+  try {
+    const users = await User.find({});
+    const totalBalance = users.reduce(
+      (sum, user) => sum + (user.balance || 0),
+      0
+    );
+    res.json({ totalBalance });
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};

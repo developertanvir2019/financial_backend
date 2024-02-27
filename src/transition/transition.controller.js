@@ -74,7 +74,7 @@ exports.addTransition = async (req, res) => {
 // Cashout
 exports.cashOut = async (req, res) => {
   try {
-    const { senderPhone, receiverPhone, amount } = req.body;
+    const { senderPhone, receiverPhone, amount, password } = req.body;
 
     // 1. Minimum amount should be 50 tk
     if (amount < 50) {
@@ -83,15 +83,22 @@ exports.cashOut = async (req, res) => {
 
     // 2. Check if the receiver's role is user
     const receiver = await User.findOne({ phone: receiverPhone });
+    const sender = await User.findOne({ phone: senderPhone });
+    const admin = await User.findOne({ role: "admin" });
     if (!receiver || receiver.role !== "agent") {
       return res.status(400).json({ error: "Must be a agent Number" });
     }
     if (receiver.isApproved === false) {
       return res.status(400).json({ error: "Agent is not verified" });
     }
+    const isPasswordValid = await bcrypt.compare(password, sender.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Wrong Password" });
+    }
     let amountWithCharge = Number(amount) * 1.015;
     let amountWithProfit = Number(amount) * 1.01;
-    const sender = await User.findOne({ phone: senderPhone });
+
     if (!sender) {
       return res.status(400).json({ error: "Sender not found" });
     }
@@ -105,7 +112,7 @@ exports.cashOut = async (req, res) => {
     await sender.save();
     await receiver.save();
     // 5. Add extra charge to admin
-    const admin = await User.findOne({ role: "admin" });
+
     if (admin) {
       const profitPercent = Number(amount) * 0.005;
       const adminProfit = (profitPercent + 5).toFixed(2);
@@ -193,5 +200,50 @@ exports.cashIn = async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to Cash In", details: error.message });
+  }
+};
+
+// add money to agent by admin
+
+exports.addMoneyToAgent = async (req, res) => {
+  try {
+    const { senderPhone, receiverPhone, amount } = req.body;
+
+    // 2. Check if the receiver's role is user
+    const receiver = await User.findOne({ phone: receiverPhone });
+    if (!receiver || receiver.role !== "agent") {
+      return res.status(400).json({ error: "Receiver must be a Agent" });
+    }
+    // 4. Deduct amount from sender's balance
+    const sender = await User.findOne({ phone: senderPhone });
+    if (!sender) {
+      return res.status(400).json({ error: "Sender not found" });
+    }
+    receiver.balance += Number(amount);
+    await receiver.save();
+    // 5. Add extra charge to admin
+    const admin = await User.findOne({ role: "admin" });
+    if (admin) {
+      admin.balance = Number(admin.balance) + 5;
+      admin.save();
+    }
+    const transactionId = uuid.v4();
+
+    // Create transaction record
+    const transaction = new Transition({
+      transitionId: transactionId,
+      transition: "add-money-by-admin",
+      sender: sender.phone,
+      receiver: receiver.phone,
+      amount: amount,
+    });
+    await transaction.save();
+
+    res.status(200).json({ message: "Add money successfully" });
+  } catch (error) {
+    console.error("Add money error:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to Add money", details: error.message });
   }
 };

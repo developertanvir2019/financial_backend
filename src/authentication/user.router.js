@@ -1,5 +1,10 @@
 const express = require("express");
-const { login, signup, getUserById } = require("./user.controller");
+const {
+  login,
+  signup,
+  getUserById,
+  getTotalBalance,
+} = require("./user.controller");
 
 const router = express.Router();
 
@@ -8,6 +13,7 @@ router.post("/signup", signup);
 
 // User Login
 router.post("/login", login);
-router.get("/:id", getUserById);
+router.get("/totalBalance", getTotalBalance);
+router.get("/getUser/:id", getUserById);
 
 module.exports = router;
