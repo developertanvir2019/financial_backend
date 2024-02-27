@@ -4,6 +4,7 @@ require("dotenv").config();
 const cors = require("cors");
 const { json } = require("body-parser");
 const userRouter = require("./src/authentication/user.router");
+const transitionRouter = require("./src/transition/transition.router");
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.get("/", async (req, res) => {
 });
 
 app.use("/api/user", userRouter);
+app.use("/api/transition", transitionRouter);
 
 app.all("*", async (req, res, next) => {
   return next(new Error("Invalid route"));
