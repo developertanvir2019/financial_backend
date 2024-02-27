@@ -117,3 +117,20 @@ exports.getTotalBalance = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// get all user
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    // Fetch all balance records
+    const users = await User.find({});
+
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    res.status(500).json({
+      error: "Failed to fetch all users",
+      details: error.message,
+    });
+  }
+};

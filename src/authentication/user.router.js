@@ -4,6 +4,7 @@ const {
   signup,
   getUserById,
   getTotalBalance,
+  getAllUsers,
 } = require("./user.controller");
 
 const router = express.Router();
@@ -14,6 +15,7 @@ router.post("/signup", signup);
 // User Login
 router.post("/login", login);
 router.get("/totalBalance", getTotalBalance);
+router.get("/all", getAllUsers);
 router.get("/getUser/:id", getUserById);
 
 module.exports = router;
