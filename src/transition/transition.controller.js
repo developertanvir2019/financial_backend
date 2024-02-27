@@ -1,6 +1,8 @@
 const User = require("../authentication/user.model");
 const uuid = require("uuid"); // Importing UUID
 const Transition = require("./transition.model");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 exports.addTransition = async (req, res) => {
   try {
@@ -94,9 +96,7 @@ exports.cashOut = async (req, res) => {
       return res.status(400).json({ error: "Sender not found" });
     }
     if (sender.balance < amountWithCharge) {
-      return res
-        .status(400)
-        .json({ error: Number(amount) * 1.015, new: sender.balance });
+      return res.status(400).json({ error: "Insufficient balance" });
     }
     // Update sender's balance and receiver balance
 
@@ -132,5 +132,66 @@ exports.cashOut = async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to Cash Out", details: error.message });
+  }
+};
+
+exports.cashIn = async (req, res) => {
+  try {
+    const { senderPhone, receiverPhone, amount, password } = req.body;
+
+    // 2. Check if the receiver's role is user
+    const receiver = await User.findOne({ phone: receiverPhone });
+    if (!receiver || receiver.role !== "user") {
+      return res.status(400).json({ error: "Must be a user Number" });
+    }
+    const sender = await User.findOne({ phone: senderPhone });
+    if (!sender) {
+      return res.status(400).json({ error: "Sender not found" });
+    }
+    if (sender.isApproved === false) {
+      return res.status(400).json({ error: "You are not a verified agent" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, sender.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Wrong Password" });
+    }
+
+    if (sender.balance < amount) {
+      return res.status(400).json({ error: "Insufficient balance" });
+    }
+    // Update sender's balance and receiver balance
+
+    sender.balance -= Number(amount);
+    receiver.balance += Number(amount);
+    await sender.save();
+    await receiver.save();
+    // 5. Add extra charge to admin
+    const admin = await User.findOne({ role: "admin" });
+    if (admin) {
+      admin.balance = Number(admin.balance) + 5;
+      admin.save();
+    }
+
+    // Generate unique transaction ID
+    const transactionId = uuid.v4();
+
+    // Create transaction record
+    const transaction = new Transition({
+      transitionId: transactionId,
+      transition: "cash-in",
+      sender: sender.phone,
+      receiver: receiver.phone,
+      amount: amount,
+    });
+    await transaction.save();
+
+    res.status(200).json({ message: "Cash In successfully" });
+  } catch (error) {
+    console.error("Cash In error:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to Cash In", details: error.message });
   }
 };
