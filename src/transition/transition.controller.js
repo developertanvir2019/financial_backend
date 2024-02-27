@@ -68,3 +68,69 @@ exports.addTransition = async (req, res) => {
       .json({ error: "Failed to send money", details: error.message });
   }
 };
+
+// Cashout
+exports.cashOut = async (req, res) => {
+  try {
+    const { senderPhone, receiverPhone, amount } = req.body;
+
+    // 1. Minimum amount should be 50 tk
+    if (amount < 50) {
+      return res.status(400).json({ error: "Minimum amount should be 50 tk" });
+    }
+
+    // 2. Check if the receiver's role is user
+    const receiver = await User.findOne({ phone: receiverPhone });
+    if (!receiver || receiver.role !== "agent") {
+      return res.status(400).json({ error: "Must be a agent Number" });
+    }
+    if (receiver.isApproved === false) {
+      return res.status(400).json({ error: "Agent is not verified" });
+    }
+    let amountWithCharge = Number(amount) * 1.015;
+    let amountWithProfit = Number(amount) * 1.01;
+    const sender = await User.findOne({ phone: senderPhone });
+    if (!sender) {
+      return res.status(400).json({ error: "Sender not found" });
+    }
+    if (sender.balance < amountWithCharge) {
+      return res
+        .status(400)
+        .json({ error: Number(amount) * 1.015, new: sender.balance });
+    }
+    // Update sender's balance and receiver balance
+
+    sender.balance -= amountWithCharge;
+    receiver.balance += amountWithProfit;
+    await sender.save();
+    await receiver.save();
+    // 5. Add extra charge to admin
+    const admin = await User.findOne({ role: "admin" });
+    if (admin) {
+      const profitPercent = Number(amount) * 0.005;
+      const adminProfit = (profitPercent + 5).toFixed(2);
+      admin.balance = Number(admin.balance) + Number(adminProfit);
+      admin.save();
+    }
+
+    // Generate unique transaction ID
+    const transactionId = uuid.v4();
+
+    // Create transaction record
+    const transaction = new Transition({
+      transitionId: transactionId,
+      transition: "cash-out",
+      sender: sender.phone,
+      receiver: receiver.phone,
+      amount: amount,
+    });
+    await transaction.save();
+
+    res.status(200).json({ message: "Cash Out successfully" });
+  } catch (error) {
+    console.error("Cash Out error:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to Cash Out", details: error.message });
+  }
+};
