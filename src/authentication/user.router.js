@@ -5,6 +5,8 @@ const {
   getUserById,
   getTotalBalance,
   getAllUsers,
+  approveUser,
+  blockUser,
 } = require("./user.controller");
 
 const router = express.Router();
@@ -18,4 +20,6 @@ router.get("/totalBalance", getTotalBalance);
 router.get("/all", getAllUsers);
 router.get("/getUser/:id", getUserById);
 
+router.put("/approve/:id", approveUser);
+router.put("/block/:id", blockUser);
 module.exports = router;

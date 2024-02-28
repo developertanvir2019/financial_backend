@@ -247,3 +247,22 @@ exports.addMoneyToAgent = async (req, res) => {
       .json({ error: "Failed to Add money", details: error.message });
   }
 };
+
+exports.getTransitionsByNumber = async (req, res) => {
+  try {
+    const { number } = req.query;
+
+    // Find transitions where sender or receiver matches the provided number
+    const transitions = await Transition.find({
+      $or: [{ sender: number }, { receiver: number }],
+    });
+
+    res.status(200).json({ transitions });
+  } catch (error) {
+    console.error("Error fetching transitions:", error);
+    res.status(500).json({
+      error: "Failed to fetch transitions",
+      details: error.message,
+    });
+  }
+};
